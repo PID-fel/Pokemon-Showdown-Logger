@@ -6,10 +6,13 @@ from xlwt import Workbook
 from openpyxl import Workbook
 from openpyxl import load_workbook
 import os
+from operator import itemgetter
+import shutil
 
 sheetName = "showdown.xlsx"
 accounts = []
-gameDownloadsPath = "./replay_downloads/"
+gameDownloadsPath = "./unlogged_replays/"
+loggedGamesPath = "./logged_replays/"
 with open('./accounts.txt') as f:
     allLines = f.readlines()
     if len(allLines) == 0:
@@ -46,6 +49,7 @@ def gameLogTodictionary(fileName, accountList):
         outList = f.read().split('\n')
 
     gameLogDictionary = {
+        "fileName" : fileName.split("/")[-1],
         "format" : (fileName.split("/")[-1].split("-")[0]),
         "p1": None,
         "p2": None,
@@ -57,6 +61,9 @@ def gameLogTodictionary(fileName, accountList):
         "p1RatingEnd": None,
         "p2RatingStart": None,
         "p2RatingEnd": None,
+        "dateTimeStart" : None,
+
+
     }
 
     allTimes = []
@@ -100,16 +107,11 @@ def gameLogTodictionary(fileName, accountList):
                     gameLogDictionary["p2"] = playerName
                     gameLogDictionary["p2RatingStart"] = rating
 
-    if len(turnTimes) == 0:
-        gameLogDictionary["date"] = datetime.fromtimestamp(int(allTimes[0])).strftime("%Y-%m-%d") 
-        gameLogDictionary["timeStart"] = datetime.fromtimestamp(int(allTimes[0])).strftime("%H:%M:%S") 
-        gameLogDictionary["timeFinish"] = datetime.fromtimestamp(int(allTimes[-1])).strftime("%H:%M:%S") 
-        gameLogDictionary["turnCount"] = 0 
-    else:
-        gameLogDictionary["date"] = datetime.fromtimestamp(int(allTimes[0])).strftime("%Y-%m-%d") 
-        gameLogDictionary["timeStart"] = datetime.fromtimestamp(int(allTimes[0])).strftime("%H:%M:%S") 
-        gameLogDictionary["timeFinish"] = datetime.fromtimestamp(int(allTimes[-1])).strftime("%H:%M:%S") 
-        gameLogDictionary["turnCount"] = len(turnTimes)
+    gameLogDictionary["date"] = datetime.fromtimestamp(int(allTimes[0])).strftime("%Y-%m-%d") 
+    gameLogDictionary["timeStart"] = datetime.fromtimestamp(int(allTimes[0])).strftime("%H:%M:%S") 
+    gameLogDictionary["timeFinish"] = datetime.fromtimestamp(int(allTimes[-1])).strftime("%H:%M:%S") 
+    gameLogDictionary["dateTimeStart"] = int(allTimes[-1])
+    gameLogDictionary["turnCount"] = len(turnTimes)
 
     if any(x.lower().rstrip() == gameLogDictionary["p1"].lower().rstrip() for x in accountList):
         pass
@@ -148,11 +150,10 @@ def gameLogTodictionary(fileName, accountList):
 
     return(gameLogDictionary)
 
-def addGameToSheet(fileName, gameDirectory, listOfAccounts):
+def addGameToSheet(fileName, gameDictionary):
     rowToCheck = 2
     unfilledRowFound = False
 
-    gameDictionary = gameLogTodictionary(gameDirectory, listOfAccounts)
     outputList = logDictionaryToInputList(gameDictionary)
     gameListKeys = list(gameDictionary.keys())
 
@@ -177,7 +178,6 @@ def addGameToSheet(fileName, gameDirectory, listOfAccounts):
 
             for x in range (len(outputList)):
                 sheet[intToColumnLetter(x+1) + str(rowToCheck)] =  outputList[x]
-                
         else:
             rowToCheck += 1
 
@@ -188,9 +188,28 @@ def addGameToSheet(fileName, gameDirectory, listOfAccounts):
 def addAllGamesToSheet():
     dir_list = os.listdir(gameDownloadsPath)
 
-    for game in dir_list:
-        if(addGameToSheet(sheetName, (gameDownloadsPath + game), accounts)):
-            os.remove(gameDownloadsPath + game)
+    allGameLogDictionaries = []
+
+    dateTimeStartIndex = None
+    dateTimeStartIndex
+
+    for gameName in dir_list:
+        allGameLogDictionaries.append(gameLogTodictionary(gameDownloadsPath+gameName, accounts))
+
+
+    print("gameLog:", type(allGameLogDictionaries[0]))
+
+    allGameLogDictionariesSorted = sorted(allGameLogDictionaries, key=itemgetter('dateTimeStart'))
+
+
+    for gameLog in allGameLogDictionariesSorted:
+        if addGameToSheet(sheetName, gameLog):
+            print(gameLog["fileName"])
+            shutil.copyfile(gameDownloadsPath + gameLog["fileName"], loggedGamesPath + gameLog["fileName"])
+
+            os.remove(gameDownloadsPath + gameLog["fileName"])
+        else:
+            print(allGameLogDictionariesSorted, " failed")
 
 
 

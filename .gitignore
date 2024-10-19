@@ -2,4 +2,5 @@ showdown backup.xlsx
 showdown.xlsx
 accounts.txt
 update_all.bat
-replay_downloads/
+logged_replays/
+unlogged_replays/
