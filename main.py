@@ -77,30 +77,15 @@ def gameLogTodictionary(fileName, accountList):
         if x[0:6] == "|turn|":
             turnTimes.append(allTimes[-1])
 
-
-
         if x[0:5] == "|raw|" and not x[0:9] == "|raw|<div" and not x[0:10] == "|raw|<font": 
             ratingSplit = x.split("rating:")
             if len(ratingSplit) >1:
                 
-
-
-                print(gameLogDictionary["p1RatingEnd"] is None)
                 endRating = ratingSplit[1].split("<")[1].split(">")[1]
                 if gameLogDictionary["p1RatingEnd"] == None:
-
                     gameLogDictionary["p1RatingEnd"] = endRating
-                    print("p1 end rating done", endRating)
-
                 else:
-
                     gameLogDictionary["p2RatingEnd"] = endRating
-                    print("p2 end rating done", endRating)
-
-
-
-
-
 
         if x[0:8] == "|player|":
             if len(x)>16:
@@ -191,8 +176,6 @@ def addGameToSheet(fileName, gameDirectory, listOfAccounts):
                 keyIndex = keyIndex + 1
 
             for x in range (len(outputList)):
-                #print(outputList)
-                #print(outputList[x])
                 sheet[intToColumnLetter(x+1) + str(rowToCheck)] =  outputList[x]
                 
         else:
