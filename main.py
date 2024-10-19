@@ -13,12 +13,30 @@ sheetName = "showdown.xlsx"
 accounts = []
 gameDownloadsPath = "./unlogged_replays/"
 loggedGamesPath = "./logged_replays/"
+
+requisiteFiles = ["./accounts.txt", "./showdown.xlsx", "./unlogged_replays/", "./logged_replays/"]
+
+for fileName in requisiteFiles:
+    if not os.path.isfile(fileName):
+        if not fileName[-1] == "/":
+            open(fileName, 'w').close()
+        else:
+            os.makedirs(fileName, exist_ok=True)
+
+
+
+
+
+
 with open('./accounts.txt') as f:
     allLines = f.readlines()
     if len(allLines) == 0:
         raise ValueError("No User Accounts Specified in Accounts")
     else:
         accounts = allLines
+
+
+
 
 def intToColumnLetter(int):
     #only does up to two digits which isnt ideal but i doubt i would ever have more than 26^2 columns
@@ -195,9 +213,6 @@ def addAllGamesToSheet():
 
     for gameName in dir_list:
         allGameLogDictionaries.append(gameLogTodictionary(gameDownloadsPath+gameName, accounts))
-
-
-    print("gameLog:", type(allGameLogDictionaries[0]))
 
     allGameLogDictionariesSorted = sorted(allGameLogDictionaries, key=itemgetter('dateTimeStart'))
 
