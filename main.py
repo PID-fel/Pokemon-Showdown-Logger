@@ -23,20 +23,12 @@ for fileName in requisiteFiles:
         else:
             os.makedirs(fileName, exist_ok=True)
 
-
-
-
-
-
 with open('./accounts.txt') as f:
     allLines = f.readlines()
     if len(allLines) == 0:
         raise ValueError("No User Accounts Specified in Accounts")
     else:
         accounts = allLines
-
-
-
 
 def intToColumnLetter(int):
     #only does up to two digits which isnt ideal but i doubt i would ever have more than 26^2 columns
@@ -84,6 +76,8 @@ def gameLogTodictionary(fileName, accountList):
 
     }
 
+    p1revealedPokemon = []
+    p2revealedPokemon = []
     allTimes = []
     turnTimes = []
     
@@ -125,6 +119,18 @@ def gameLogTodictionary(fileName, accountList):
                     gameLogDictionary["p2"] = playerName
                     gameLogDictionary["p2RatingStart"] = rating
 
+        if x[0:9] == "|switch|p":
+            player = x[9:10]
+            revealedpokemon = x.split(": ")[1].split("|")[0]
+
+            if player == "1" and (revealedpokemon not in p1revealedPokemon):
+                p1revealedPokemon.append(revealedpokemon)
+
+            if player == "2" and (revealedpokemon not in p2revealedPokemon):
+                p2revealedPokemon.append(revealedpokemon)
+
+
+
     gameLogDictionary["date"] = datetime.fromtimestamp(int(allTimes[0])).strftime("%Y-%m-%d") 
     gameLogDictionary["timeStart"] = datetime.fromtimestamp(int(allTimes[0])).strftime("%H:%M:%S") 
     gameLogDictionary["timeFinish"] = datetime.fromtimestamp(int(allTimes[-1])).strftime("%H:%M:%S") 
@@ -156,6 +162,15 @@ def gameLogTodictionary(fileName, accountList):
         raise ValueError("no user recognized")
 
     teamKeys = ["Poke" + str(x) for x in range(6)]
+
+    if len(gameLogDictionary["p1PokemonList"]) == 0:
+        gameLogDictionary["p1PokemonList"] = p1revealedPokemon
+
+    if len(gameLogDictionary["p2PokemonList"]) == 0:
+        gameLogDictionary["p2PokemonList"] = p2revealedPokemon
+
+    print(gameLogDictionary["p1PokemonList"])
+    print(gameLogDictionary["p2PokemonList"])
 
     for x in range (2):
         for y in range (len(teamKeys)):
