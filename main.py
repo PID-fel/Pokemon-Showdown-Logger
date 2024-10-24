@@ -14,24 +14,12 @@ accounts = []
 gameDownloadsPath = "./unlogged_replays/"
 loggedGamesPath = "./logged_replays/"
 
-requisiteFiles = ["./accounts.txt", "./showdown.xlsx", "./unlogged_replays/", "./logged_replays/"]
 
-for fileName in requisiteFiles:
-    if not os.path.isfile(fileName):
-        if not fileName[-1] == "/":
-            open(fileName, 'w').close()
-        else:
-            os.makedirs(fileName, exist_ok=True)
 
-with open('./accounts.txt') as f:
-    allLines = f.readlines()
-    if len(allLines) == 0:
-        raise ValueError("No User Accounts Specified in Accounts")
-    else:
-        accounts = allLines
+    
 
 def intToColumnLetter(int):
-    #only does up to two digits which isnt ideal but i doubt i would ever have more than 26^2 columns
+    #Only does up to two digits which isn't ideal but I doubt you would ever have more than 26*27 columns
 
     alphabet = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
     begining = ''
@@ -50,6 +38,23 @@ def logDictionaryToInputList(logDictionary):
             outList.append(logDictionary[x])
 
     return outList
+
+def addHeaderToSheet(fileName):
+    columnHeaders = ["Index", "Filename", "Format", "Player1", "Player2",
+        "P1Poke0", "P1Poke1" , "P1Poke2" , "P1Poke3", "P1Poke4", "P1Poke5",
+        "P2Poke0", "P2Poke1" , "P2Poke2" , "P2Poke3", "P2Poke4", "P2Poke5",
+        "P1Elo_Start", "P1Elo_End", "P2Elo_Start", "P2Elo_End",
+        "Unix_Timestamp_Start", "Date_Start", "Time_Start", "Time_End", "Total_Turns"]
+    workbook = load_workbook(filename=fileName)
+    workbook.sheetnames
+    sheet = workbook.active
+    columnIndex = 0
+
+    for columnHeader in columnHeaders:
+        sheet[intToColumnLetter(columnIndex) + "1"] =  columnHeader
+        columnIndex = columnIndex + 1
+    workbook.save(filename=fileName)
+
 
 def gameLogTodictionary(fileName, accountList):
 
@@ -72,8 +77,6 @@ def gameLogTodictionary(fileName, accountList):
         "p2RatingStart": None,
         "p2RatingEnd": None,
         "dateTimeStart" : None,
-
-
     }
 
     p1revealedPokemon = []
@@ -159,7 +162,7 @@ def gameLogTodictionary(fileName, accountList):
         gameLogDictionary["p2PokemonList"] = p1PokemonListSave
         
     else:
-        raise ValueError("no user recognized")
+        raise ValueError("no username matches:", gameLogDictionary["p1"].lower().rstrip(), "or", gameLogDictionary["p2"].lower().rstrip())
 
     teamKeys = ["Poke" + str(x) for x in range(6)]
 
@@ -168,9 +171,6 @@ def gameLogTodictionary(fileName, accountList):
 
     if len(gameLogDictionary["p2PokemonList"]) == 0:
         gameLogDictionary["p2PokemonList"] = p2revealedPokemon
-
-    print(gameLogDictionary["p1PokemonList"])
-    print(gameLogDictionary["p2PokemonList"])
 
     for x in range (2):
         for y in range (len(teamKeys)):
@@ -234,13 +234,36 @@ def addAllGamesToSheet():
 
     for gameLog in allGameLogDictionariesSorted:
         if addGameToSheet(sheetName, gameLog):
-            print(gameLog["fileName"])
+            print(gameLog["fileName"], " completed")
             shutil.copyfile(gameDownloadsPath + gameLog["fileName"], loggedGamesPath + gameLog["fileName"])
 
             os.remove(gameDownloadsPath + gameLog["fileName"])
         else:
-            print(allGameLogDictionariesSorted, " failed")
+            print(gameLog["fileName"], " failed")
 
+
+requisiteFiles = ["./accounts.txt",  "./unlogged_replays/", "./logged_replays/"]
+
+if not os.path.isfile("./showdown.xlsx",):
+    workbook = Workbook()
+    workbook.save("./showdown.xlsx")
+    addHeaderToSheet("showdown.xlsx")
+
+for fileName in requisiteFiles:
+    if not os.path.isfile(fileName):
+        if not fileName[-1] == "/":
+            open(fileName, 'w').close()
+        else:
+
+            os.makedirs(fileName, exist_ok=True)
+
+
+with open('./accounts.txt') as f:
+    allLines = f.readlines()
+    if len(allLines) == 0:
+        raise ValueError("No User Accounts Specified in Accounts")
+    else:
+        accounts = allLines
 
 
 addAllGamesToSheet()
