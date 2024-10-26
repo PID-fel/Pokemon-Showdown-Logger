@@ -14,10 +14,6 @@ accounts = []
 gameDownloadsPath = "./unlogged_replays/"
 loggedGamesPath = "./logged_replays/"
 
-
-
-    
-
 def intToColumnLetter(int):
     #Only does up to two digits which isn't ideal but I doubt you would ever have more than 26*27 columns
 
@@ -181,6 +177,9 @@ def gameLogTodictionary(fileName, accountList):
             else:
                 gameLogDictionary["p"+str(x+1)+str(teamKeys[y])] = currentPlayerPokeList[y]
 
+
+
+
     return(gameLogDictionary)
 
 def addGameToSheet(fileName, gameDictionary):
@@ -218,7 +217,7 @@ def addGameToSheet(fileName, gameDictionary):
 
     return True
 
-def addAllGamesToSheet():
+def getListsOfAllGames():
     dir_list = os.listdir(gameDownloadsPath)
 
     allGameLogDictionaries = []
@@ -231,6 +230,10 @@ def addAllGamesToSheet():
 
     allGameLogDictionariesSorted = sorted(allGameLogDictionaries, key=itemgetter('dateTimeStart'))
 
+    return allGameLogDictionariesSorted
+
+
+def addListOfGamesToSheet(allGameLogDictionariesSorted):
 
     for gameLog in allGameLogDictionariesSorted:
         if addGameToSheet(sheetName, gameLog):
@@ -266,4 +269,4 @@ with open('./accounts.txt') as f:
         accounts = allLines
 
 
-addAllGamesToSheet()
+addListOfGamesToSheet(getListsOfAllGames())
