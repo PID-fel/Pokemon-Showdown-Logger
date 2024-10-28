@@ -2,5 +2,7 @@ showdown backup.xlsx
 showdown.xlsx
 accounts.txt
 update_all.bat
-logged_replays/
-unlogged_replays/
+To_Log_Google_Sheet_Replays/
+To_Log_XLSX_Replays/
+Logged_Replays/
+credentials.json

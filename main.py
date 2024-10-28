@@ -1,18 +1,31 @@
-import requests
-import logging
 from datetime import datetime
-import xlwt 
 from xlwt import Workbook 
 from openpyxl import Workbook
 from openpyxl import load_workbook
 import os
 from operator import itemgetter
 import shutil
+import gspread
+import json
+import pathlib
 
 sheetName = "showdown.xlsx"
 accounts = []
-gameDownloadsPath = "./unlogged_replays/"
-loggedGamesPath = "./logged_replays/"
+
+downloadsPathXLSX = "./To_Log_XLSX_Replays/"
+downloadsPathGoogleSheets = "./To_Log_Google_Sheet_Replays/"
+
+
+loggedGamesPath = "./Logged_Replays/"
+
+data = json.loads(pathlib.Path('credentials.json').read_text())
+
+scopes = ["https://www.googleapis.com/auth/spreadsheets"]
+sheetId = "1nPH6Csv5pRwMmE8mChgHhecHzwsqAXMYecNIuMByKI4"
+
+gc = gspread.service_account_from_dict(data)
+
+
 
 def intToColumnLetter(int):
     #Only does up to two digits which isn't ideal but I doubt you would ever have more than 26*27 columns
@@ -145,12 +158,10 @@ def gameLogTodictionary(fileName, accountList):
         p1RatingEndSave = gameLogDictionary["p1RatingEnd"]
         p1PokemonListSave = gameLogDictionary["p1PokemonList"]
 
-
         gameLogDictionary["p1"] = gameLogDictionary["p2"]
         gameLogDictionary["p1RatingStart"] = gameLogDictionary["p2RatingStart"]
         gameLogDictionary["p1RatingEnd"] = gameLogDictionary["p2RatingEnd"]
         gameLogDictionary["p1PokemonList"] = gameLogDictionary["p2PokemonList"]
-
 
         gameLogDictionary["p2"] = p1Save
         gameLogDictionary["p2RatingStart"] = p1RatingStartSave
@@ -182,7 +193,24 @@ def gameLogTodictionary(fileName, accountList):
 
     return(gameLogDictionary)
 
-def addGameToSheet(fileName, gameDictionary):
+
+def getListsOfAllGames(gameDownloadsPath):
+    dir_list = os.listdir(gameDownloadsPath)
+
+    allGameLogDictionaries = []
+
+    dateTimeStartIndex = None
+    dateTimeStartIndex
+
+    for gameName in dir_list:
+        allGameLogDictionaries.append(gameLogTodictionary(gameDownloadsPath+gameName, accounts))
+
+    allGameLogDictionariesSorted = sorted(allGameLogDictionaries, key=itemgetter('dateTimeStart'))
+
+    return allGameLogDictionariesSorted
+
+
+def addGameToXlsx(fileName, gameDictionary):
     rowToCheck = 2
     unfilledRowFound = False
 
@@ -200,12 +228,14 @@ def addGameToSheet(fileName, gameDictionary):
             sheetIndex = 0
             sheet["A"+str(rowToCheck)] = sheet["A"+str(rowToCheck-1)].value + 1
 
+            gameDictionary.pop("p1PokemonList", any)
+            gameDictionary.pop("p2PokemonList", any)
+
             while keyIndex != len(gameListKeys):
                 indexOfCurrentKey = gameListKeys[keyIndex]
 
-                if not (indexOfCurrentKey == "p1PokemonList" or indexOfCurrentKey == "p2PokemonList"):
-                    sheet[intToColumnLetter(sheetIndex+1) + str(rowToCheck)] =  indexOfCurrentKey
-                    sheetIndex += 1
+                sheet[intToColumnLetter(sheetIndex+1) + str(rowToCheck)] =  indexOfCurrentKey
+                sheetIndex += 1
                 keyIndex = keyIndex + 1
 
             for x in range (len(outputList)):
@@ -217,32 +247,60 @@ def addGameToSheet(fileName, gameDictionary):
 
     return True
 
-def getListsOfAllGames():
-    dir_list = os.listdir(gameDownloadsPath)
+def addGameToGoogleSheet(fileName, gameDictionary):
+    rowToCheck = 2
+    unfilledRowFound = False
 
-    allGameLogDictionaries = []
+    outputList = logDictionaryToInputList(gameDictionary)
+    gameListKeys = list(gameDictionary.keys())
 
-    dateTimeStartIndex = None
-    dateTimeStartIndex
+    sheet = gc.open_by_key(sheetId).sheet1
 
-    for gameName in dir_list:
-        allGameLogDictionaries.append(gameLogTodictionary(gameDownloadsPath+gameName, accounts))
+    while not unfilledRowFound:
 
-    allGameLogDictionariesSorted = sorted(allGameLogDictionaries, key=itemgetter('dateTimeStart'))
-
-    return allGameLogDictionariesSorted
+        if (sheet.acell("A"+str(rowToCheck)).value == None ):
+            unfilledRowFound = True
 
 
-def addListOfGamesToSheet(allGameLogDictionariesSorted):
+            gameDictionary.pop("p1PokemonList", any)
+            gameDictionary.pop("p2PokemonList", any)
+
+
+
+            outputList = list(gameDictionary.values())
+            outputList.insert(0, int(sheet.acell("A"+str(rowToCheck-1)).value) + 1)
+
+
+            sheet.update("A"+str(rowToCheck)+":" +str(intToColumnLetter(len(outputList)-1))+str(rowToCheck), [outputList])
+        else:
+            rowToCheck += 1
+
+    return True
+
+
+def addListOfGamesToXlsx(allGameLogDictionariesSorted):
 
     for gameLog in allGameLogDictionariesSorted:
-        if addGameToSheet(sheetName, gameLog):
-            print(gameLog["fileName"], " completed")
-            shutil.copyfile(gameDownloadsPath + gameLog["fileName"], loggedGamesPath + gameLog["fileName"])
+        if addGameToXlsx(sheetName, gameLog):
+            print(gameLog["fileName"], " added to XLSX")
+            shutil.copyfile(downloadsPathXLSX + gameLog["fileName"], downloadsPathGoogleSheets + gameLog["fileName"])
 
-            os.remove(gameDownloadsPath + gameLog["fileName"])
+
+            os.remove(downloadsPathXLSX + gameLog["fileName"])
         else:
-            print(gameLog["fileName"], " failed")
+            print(gameLog["fileName"], " failed to add to XLSX")
+
+
+
+def addListOfGamesToGoogleSheet(allGameLogDictionariesSorted):
+    for gameLog in allGameLogDictionariesSorted:
+        if addGameToGoogleSheet(sheetName, gameLog):
+            print(gameLog["fileName"], "  added to Google Sheet")
+            shutil.copyfile(downloadsPathGoogleSheets + gameLog["fileName"], loggedGamesPath + gameLog["fileName"])
+
+            os.remove(downloadsPathGoogleSheets + gameLog["fileName"])
+        else:
+            print(gameLog["fileName"], " failed to add to Google Sheet")
 
 
 requisiteFiles = ["./accounts.txt",  "./unlogged_replays/", "./logged_replays/"]
@@ -269,4 +327,6 @@ with open('./accounts.txt') as f:
         accounts = allLines
 
 
-addListOfGamesToSheet(getListsOfAllGames())
+addListOfGamesToXlsx(getListsOfAllGames(downloadsPathXLSX))
+
+addListOfGamesToGoogleSheet(getListsOfAllGames(downloadsPathGoogleSheets))
