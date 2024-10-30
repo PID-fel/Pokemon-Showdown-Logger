@@ -210,97 +210,108 @@ def getListsOfAllGames(gameDownloadsPath):
     return allGameLogDictionariesSorted
 
 
-def addGameToXlsx(fileName, gameDictionary):
+def addGameToSheet(fileName, gameDictionary, xslxOrGoogle):
+
     rowToCheck = 2
     unfilledRowFound = False
 
     outputList = logDictionaryToInputList(gameDictionary)
-    gameListKeys = list(gameDictionary.keys())
 
-    workbook = load_workbook(filename=fileName)
-    workbook.sheetnames
-    sheet = workbook.active
+    if xslxOrGoogle == 0:
+        gameListKeys = list(gameDictionary.keys())
 
-    while not unfilledRowFound:
-        if (sheet["A"+str(rowToCheck)].value == None ):
-            unfilledRowFound = True
-            keyIndex = 0
-            sheetIndex = 0
-            sheet["A"+str(rowToCheck)] = sheet["A"+str(rowToCheck-1)].value + 1
+        workbook = load_workbook(filename=fileName)
+        workbook.sheetnames
+        sheet = workbook.active
 
-            gameDictionary.pop("p1PokemonList", any)
-            gameDictionary.pop("p2PokemonList", any)
+        while not unfilledRowFound:
+            if (sheet["A"+str(rowToCheck)].value == None ):
+                unfilledRowFound = True
+                keyIndex = 0
+                sheetIndex = 0
+                sheet["A"+str(rowToCheck)] = sheet["A"+str(rowToCheck-1)].value + 1
 
-            while keyIndex != len(gameListKeys):
-                indexOfCurrentKey = gameListKeys[keyIndex]
+                gameDictionary.pop("p1PokemonList", any)
+                gameDictionary.pop("p2PokemonList", any)
 
-                sheet[intToColumnLetter(sheetIndex+1) + str(rowToCheck)] =  indexOfCurrentKey
-                sheetIndex += 1
-                keyIndex = keyIndex + 1
+                while keyIndex != len(gameListKeys):
+                    indexOfCurrentKey = gameListKeys[keyIndex]
 
-            for x in range (len(outputList)):
-                sheet[intToColumnLetter(x+1) + str(rowToCheck)] =  outputList[x]
-        else:
-            rowToCheck += 1
+                    sheet[intToColumnLetter(sheetIndex+1) + str(rowToCheck)] =  indexOfCurrentKey
+                    sheetIndex += 1
+                    keyIndex = keyIndex + 1
 
-    workbook.save(filename=fileName)
+                for x in range (len(outputList)):
+                    sheet[intToColumnLetter(x+1) + str(rowToCheck)] =  outputList[x]
+            else:
+                rowToCheck += 1
 
-    return True
+        workbook.save(filename=fileName)
 
-def addGameToGoogleSheet(fileName, gameDictionary):
-    rowToCheck = 2
-    unfilledRowFound = False
+        return True
+    elif xslxOrGoogle == 1:
+        rowToCheck = 2
+        unfilledRowFound = False
 
-    outputList = logDictionaryToInputList(gameDictionary)
-    gameListKeys = list(gameDictionary.keys())
+        outputList = logDictionaryToInputList(gameDictionary)
 
-    sheet = gc.open_by_key(sheetId).sheet1
+        sheet = gc.open_by_key(sheetId).sheet1
+        while not unfilledRowFound:
 
-    while not unfilledRowFound:
-
-        if (sheet.acell("A"+str(rowToCheck)).value == None ):
-            unfilledRowFound = True
-
-
-            gameDictionary.pop("p1PokemonList", any)
-            gameDictionary.pop("p2PokemonList", any)
+            if (sheet.acell("A"+str(rowToCheck)).value == None ):
+                unfilledRowFound = True
 
 
-
-            outputList = list(gameDictionary.values())
-            outputList.insert(0, int(sheet.acell("A"+str(rowToCheck-1)).value) + 1)
-
-
-            sheet.update("A"+str(rowToCheck)+":" +str(intToColumnLetter(len(outputList)-1))+str(rowToCheck), [outputList])
-        else:
-            rowToCheck += 1
-
-    return True
+                gameDictionary.pop("p1PokemonList", any)
+                gameDictionary.pop("p2PokemonList", any)
 
 
-def addListOfGamesToXlsx(allGameLogDictionariesSorted):
+
+                outputList = list(gameDictionary.values())
+                outputList.insert(0, int(sheet.acell("A"+str(rowToCheck-1)).value) + 1)
+
+
+                sheet.update("A"+str(rowToCheck)+":" +str(intToColumnLetter(len(outputList)-1))+str(rowToCheck), [outputList])
+            else:
+                rowToCheck += 1
+
+        return True
+    else:
+        raise ValueError("Incorrect input. 0 for xlsx 1 for Google Sheet")
+
+    
+
+
+
+
+def addListOfGamesToSheet(allGameLogDictionariesSorted, xslxOrGoogle):
+    sheetType = ""
+
+    if xslxOrGoogle == 0:
+        sheetType = "XLSX"
+        pathToDelete = downloadsPathXLSX
+        pathToCopyTo = downloadsPathGoogleSheets
+    elif xslxOrGoogle == 1:
+        sheetType = "Google Sheet"
+        pathToDelete = downloadsPathGoogleSheets
+        pathToCopyTo = loggedGamesPath
+
+    else:
+        raise ValueError("Incorrect input. 0 for xlsx 1 for Google Sheet")
 
     for gameLog in allGameLogDictionariesSorted:
-        if addGameToXlsx(sheetName, gameLog):
-            print(gameLog["fileName"], " added to XLSX")
-            shutil.copyfile(downloadsPathXLSX + gameLog["fileName"], downloadsPathGoogleSheets + gameLog["fileName"])
+        gameSuccesfullyAdded = addGameToSheet(sheetName, gameLog, xslxOrGoogle)
+
+        if gameSuccesfullyAdded:
+
+            print(gameLog["fileName"], "  added to " + sheetType)
+            shutil.copyfile(pathToDelete + gameLog["fileName"], pathToCopyTo + gameLog["fileName"])
+
+            os.remove(pathToDelete + gameLog["fileName"])
 
 
-            os.remove(downloadsPathXLSX + gameLog["fileName"])
         else:
-            print(gameLog["fileName"], " failed to add to XLSX")
-
-
-
-def addListOfGamesToGoogleSheet(allGameLogDictionariesSorted):
-    for gameLog in allGameLogDictionariesSorted:
-        if addGameToGoogleSheet(sheetName, gameLog):
-            print(gameLog["fileName"], "  added to Google Sheet")
-            shutil.copyfile(downloadsPathGoogleSheets + gameLog["fileName"], loggedGamesPath + gameLog["fileName"])
-
-            os.remove(downloadsPathGoogleSheets + gameLog["fileName"])
-        else:
-            print(gameLog["fileName"], " failed to add to Google Sheet")
+            print(gameLog["fileName"], " failed to add to " + sheetType)
 
 
 requisiteFiles = ["./accounts.txt",  "./unlogged_replays/", "./logged_replays/"]
@@ -327,6 +338,6 @@ with open('./accounts.txt') as f:
         accounts = allLines
 
 
-addListOfGamesToXlsx(getListsOfAllGames(downloadsPathXLSX))
+addListOfGamesToSheet(getListsOfAllGames(downloadsPathXLSX), 0)
 
-addListOfGamesToGoogleSheet(getListsOfAllGames(downloadsPathGoogleSheets))
+addListOfGamesToSheet(getListsOfAllGames(downloadsPathGoogleSheets), 1)
