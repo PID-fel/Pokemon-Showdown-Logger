@@ -5,3 +5,4 @@ To_Log_Google_Sheet_Replays/
 To_Log_XLSX_Replays/
 Logged_Replays/
 credentials.json
+.gitignore
