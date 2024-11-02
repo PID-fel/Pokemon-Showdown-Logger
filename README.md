@@ -1,3 +1,3 @@
 # Showdown-Logger
 
-Extracts relevant data from Pokemon Showdown Replays (Downloads) and updates an Excel sheet with the information..
+Extracts relevant data from Showdown Replays (Downloads) and updates an Excel and/or Google Sheet with the information
