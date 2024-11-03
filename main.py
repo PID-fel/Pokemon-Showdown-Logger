@@ -25,8 +25,14 @@ sheetId = "1nPH6Csv5pRwMmE8mChgHhecHzwsqAXMYecNIuMByKI4"
 
 gc = gspread.service_account_from_dict(data)
 
-
-
+def getAccounts(accountsFileName):
+    with open(accountsFileName) as f:
+        allLines = f.readlines()
+        if len(allLines) == 0:
+            raise ValueError("No User Accounts Specified in Accounts")
+        else:
+            return(allLines)
+    
 def intToColumnLetter(int):
     #Only does up to two digits which isn't ideal but I doubt you would ever have more than 26*27 columns
 
@@ -63,7 +69,6 @@ def addHeaderToSheet(fileName):
         sheet[intToColumnLetter(columnIndex) + "1"] =  columnHeader
         columnIndex = columnIndex + 1
     workbook.save(filename=fileName)
-
 
 def gameLogTodictionary(fileName, accountList):
 
@@ -121,7 +126,6 @@ def gameLogTodictionary(fileName, accountList):
         if x[0:8] == "|player|":
             if len(x)>16:
                 rating = x[-4:]
-
                 playerName = x[11:].split("|")[0]
 
                 if x[0:11] == "|player|p1|" and gameLogDictionary["p1"] == None:
@@ -188,7 +192,6 @@ def gameLogTodictionary(fileName, accountList):
 
     return(gameLogDictionary)
 
-
 def getListsOfAllGames(gameDownloadsPath):
     dir_list = os.listdir(gameDownloadsPath)
 
@@ -196,7 +199,6 @@ def getListsOfAllGames(gameDownloadsPath):
 
     dateTimeStartIndex = None
     dateTimeStartIndex
-
     for gameName in dir_list:
         allGameLogDictionaries.append(gameLogTodictionary(gameDownloadsPath+gameName, accounts))
 
@@ -204,111 +206,75 @@ def getListsOfAllGames(gameDownloadsPath):
 
     return allGameLogDictionariesSorted
 
-
-def addListOfGamesToSheet(allGameLogDictionariesSorted, xslxOrGoogle):
+def addListOfGamesToXLSXSheet(allGameLogDictionariesSorted):
     rowToCheck = 2
     unfilledRow = None
 
-    if xslxOrGoogle == 0:
-        workbook = load_workbook(filename=sheetName)
-        sheet = workbook.active
+    workbook = load_workbook(filename=sheetName)
+    sheet = workbook.active
 
-        while unfilledRow == None:
+    while unfilledRow == None:
 
-            if (sheet["A"+str(rowToCheck)].value == None):
-                unfilledRow = rowToCheck
-            else:
-                rowToCheck += 1
-        
-        convertedLists = []
-        currentListIndex = 1
-        for gameDictionary in allGameLogDictionariesSorted:
-
-            gameDictionary.pop("p1PokemonList", any)
-            gameDictionary.pop("p2PokemonList", any)
-            
-            convertedList = list(gameDictionary.values())
-
-            convertedList.insert(0, sheet["A"+str(rowToCheck-1)].value + currentListIndex)
-            convertedLists.append(convertedList)
-            currentListIndex += 1
-
-        for currentRow in range(len(convertedLists)):
-            for currentCollumn in range(len(convertedLists[0])):
-                cellColumn = intToColumnLetter(currentCollumn)
-                cellRow = str(unfilledRow + currentRow)
-
-                sheet[cellColumn+cellRow] = convertedLists[currentRow][currentCollumn]
-
-            gameName = allGameLogDictionariesSorted[currentRow]["fileName"]
-
-            print(gameName, "  added to XLSX")
-            shutil.copyfile(downloadsPathXLSX + gameName, downloadsPathGoogleSheets + gameName)
-            os.remove(downloadsPathXLSX + gameName)
-
-        workbook.save(filename=sheetName)
-
-    elif xslxOrGoogle == 1:
-
-        sheet = gc.open_by_key(sheetId).sheet1
-
-        while unfilledRow == None:
-
-            if (sheet.acell("A"+str(rowToCheck)).value == None):
-                unfilledRow = rowToCheck
-            else:
-                rowToCheck += 1
-
-        convertedLists = []
-        currentListIndex = 1
-        for gameDictionary in allGameLogDictionariesSorted:
-
-            gameDictionary.pop("p1PokemonList", any)
-            gameDictionary.pop("p2PokemonList", any)
-            
-            convertedList = list(gameDictionary.values())
-
-            convertedList.insert(0, int(sheet.acell("A"+str(rowToCheck-1)).value) + currentListIndex)
-            convertedLists.append(convertedList)
-            currentListIndex += 1
-
-        cellBeginning = "A"+str(rowToCheck)
-        cellEnd =str(intToColumnLetter(len(convertedLists[0])-1))+str(rowToCheck+len(convertedLists)-1)
-
-        sheet.update(cellBeginning+":"+cellEnd, convertedLists)
-
-        for gameDictionary in allGameLogDictionariesSorted:
-            gameName = gameDictionary["fileName"]
-            print(gameName, "  added to Google Sheet")
-
-            shutil.copyfile(downloadsPathGoogleSheets + gameName, loggedGamesPath + gameName)
-            os.remove(downloadsPathGoogleSheets + gameName)
-
-
-
-requisiteFiles = ["./accounts.txt",  "./unlogged_replays/", "./logged_replays/"]
-
-if not os.path.isfile("./showdown.xlsx",):
-    workbook = Workbook()
-    workbook.save("./showdown.xlsx")
-    addHeaderToSheet("showdown.xlsx")
-
-for fileName in requisiteFiles:
-    if not os.path.isfile(fileName):
-        if not fileName[-1] == "/":
-            open(fileName, 'w').close()
+        if (sheet["A"+str(rowToCheck)].value == None):
+            unfilledRow = rowToCheck
         else:
-            os.makedirs(fileName, exist_ok=True)
+            rowToCheck += 1
+    
+    convertedLists = []
+    currentListIndex = 1
+    for gameDictionary in allGameLogDictionariesSorted:
 
+        gameDictionary.pop("p1PokemonList", any)
+        gameDictionary.pop("p2PokemonList", any)
+        convertedList = list(gameDictionary.values())
+        convertedList.insert(0, sheet["A"+str(rowToCheck-1)].value + currentListIndex)
+        convertedLists.append(convertedList)
+        currentListIndex += 1
 
-with open('./accounts.txt') as f:
-    allLines = f.readlines()
-    if len(allLines) == 0:
-        raise ValueError("No User Accounts Specified in Accounts")
-    else:
-        accounts = allLines
+    for currentRow in range(len(convertedLists)):
+        for currentCollumn in range(len(convertedLists[0])):
+            cellColumn = intToColumnLetter(currentCollumn)
+            cellRow = str(unfilledRow + currentRow)
+            sheet[cellColumn+cellRow] = convertedLists[currentRow][currentCollumn]
+        gameName = allGameLogDictionariesSorted[currentRow]["fileName"]
 
+        print(gameName, "  added to XLSX")
+        shutil.copyfile(downloadsPathXLSX + gameName, downloadsPathGoogleSheets + gameName)
+        os.remove(downloadsPathXLSX + gameName)
 
-addListOfGamesToSheet(getListsOfAllGames(downloadsPathXLSX), 0)
+    workbook.save(filename=sheetName)
 
-addListOfGamesToSheet(getListsOfAllGames(downloadsPathGoogleSheets), 1)
+def addListOfGamesToGoogleSheet(allGameLogDictionariesSorted):
+    sheet = gc.open_by_key(sheetId).sheet1
+
+    AAColumn = sheet.col_values(1)
+    firstCellYValue = len(AAColumn) + 1
+
+    convertedLists = []
+    currentListIndex = 1
+    for gameDictionary in allGameLogDictionariesSorted:
+        gameDictionary.pop("p1PokemonList", any)
+        gameDictionary.pop("p2PokemonList", any)
+        
+        convertedList = list(gameDictionary.values())
+
+        convertedList.insert(0, int(AAColumn[-1]) + currentListIndex)
+        convertedLists.append(convertedList)
+        currentListIndex += 1
+
+    cellBeginning = "A"+str(firstCellYValue)
+    cellEnd =str(intToColumnLetter(len(convertedLists[0])-1))+str(firstCellYValue+len(convertedLists)-1)
+    sheet.update(cellBeginning+":"+cellEnd, convertedLists)
+
+    for gameDictionary in allGameLogDictionariesSorted:
+        gameName = gameDictionary["fileName"]
+        print(gameName, "  added to Google Sheet")
+
+        shutil.copyfile(downloadsPathGoogleSheets + gameName, loggedGamesPath + gameName)
+        os.remove(downloadsPathGoogleSheets + gameName)
+
+accounts = getAccounts('./accounts.txt')
+
+addListOfGamesToXLSXSheet(getListsOfAllGames(downloadsPathXLSX))
+
+addListOfGamesToGoogleSheet(getListsOfAllGames(downloadsPathGoogleSheets))
