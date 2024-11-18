@@ -97,15 +97,21 @@ def gameLogTodictionary(fileName, accountList):
     p2revealedPokemon = []
     allTimes = []
     turnTimes = []
-    
+    unrevealedForms1 = []
+    unrevealedForms2 = []
+
     for x in outList:
         if x[0:6] == "|poke|":
             pokemonName = x[9:].split(',')[0].split('|')[0]
-
             if x[6:8] == "p1":
                 gameLogDictionary["p1PokemonList"].append(pokemonName)
+                if pokemonName.split("-")[-1] == "*":
+                    unrevealedForms1.append(pokemonName)
+
             if x[6:8] == "p2":
                 gameLogDictionary["p2PokemonList"].append(pokemonName)
+                if pokemonName.split("-")[-1] == "*":
+                    unrevealedForms2.append(pokemonName)
 
         if x[0:4] == "|t:|":
             allTimes.append(x[4:])
@@ -137,8 +143,7 @@ def gameLogTodictionary(fileName, accountList):
 
         if x[0:9] == "|switch|p":
             player = x[9:10]
-            revealedpokemon = x.split(": ")[1].split("|")[0]
-
+            revealedpokemon = x.split(": ")[1].split("|")[1].split(",")[0]
             if player == "1" and (revealedpokemon not in p1revealedPokemon):
                 p1revealedPokemon.append(revealedpokemon)
 
@@ -151,6 +156,12 @@ def gameLogTodictionary(fileName, accountList):
     gameLogDictionary["dateTimeStart"] = int(allTimes[-1])
     gameLogDictionary["turnCount"] = len(turnTimes)
 
+    if len(gameLogDictionary["p1PokemonList"]) == 0:
+        gameLogDictionary["p1PokemonList"] = p1revealedPokemon
+
+    if len(gameLogDictionary["p2PokemonList"]) == 0:
+        gameLogDictionary["p2PokemonList"] = p2revealedPokemon
+
     if any(x.lower().rstrip() == gameLogDictionary["p1"].lower().rstrip() for x in accountList):
         pass
     elif any(x.lower().rstrip() == gameLogDictionary["p2"].lower().rstrip() for x in accountList):
@@ -159,28 +170,43 @@ def gameLogTodictionary(fileName, accountList):
         p1RatingStartSave = gameLogDictionary["p1RatingStart"]
         p1RatingEndSave = gameLogDictionary["p1RatingEnd"]
         p1PokemonListSave = gameLogDictionary["p1PokemonList"]
+        p1revealedPokemonSave = p1revealedPokemon
 
         gameLogDictionary["p1"] = gameLogDictionary["p2"]
         gameLogDictionary["p1RatingStart"] = gameLogDictionary["p2RatingStart"]
         gameLogDictionary["p1RatingEnd"] = gameLogDictionary["p2RatingEnd"]
         gameLogDictionary["p1PokemonList"] = gameLogDictionary["p2PokemonList"]
+        p1revealedPokemon = p2revealedPokemon
 
         gameLogDictionary["p2"] = p1Save
         gameLogDictionary["p2RatingStart"] = p1RatingStartSave
         gameLogDictionary["p2RatingEnd"] = p1RatingEndSave
         gameLogDictionary["p2PokemonList"] = p1PokemonListSave
+        p2revealedPokemon = p1revealedPokemonSave
         
     else:
         raise ValueError("no username matches:", gameLogDictionary["p1"].lower().rstrip(), "or", gameLogDictionary["p2"].lower().rstrip())
 
     teamKeys = ["Poke" + str(x) for x in range(6)]
 
-    if len(gameLogDictionary["p1PokemonList"]) == 0:
-        gameLogDictionary["p1PokemonList"] = p1revealedPokemon
 
-    if len(gameLogDictionary["p2PokemonList"]) == 0:
-        gameLogDictionary["p2PokemonList"] = p2revealedPokemon
+    #changes unrevealed forms into the revealed forms (when possible)
+    revealedPokemon = [p1revealedPokemon, p2revealedPokemon]
+    for playerNumber in (range(1, 3)):
+        for unrevealedFormIndex in range(len(gameLogDictionary["p"+str(playerNumber)+"PokemonList"])):
+            unrevealedForm = gameLogDictionary["p"+str(playerNumber)+"PokemonList"][unrevealedFormIndex]
+            if unrevealedForm.split("-")[-1] == "*":
 
+                for revealedFormIndex in range (len(revealedPokemon[playerNumber-1])):
+                    revealedForm = revealedPokemon[playerNumber-1][revealedFormIndex]
+
+                    if (revealedForm.split("-")[0] == unrevealedForm.split("-")[0]):
+                        gameLogDictionary["p"+str(playerNumber)+"PokemonList"][unrevealedFormIndex] = revealedForm
+                        revealedPokemon[playerNumber-1][revealedFormIndex] = ""
+                        break
+
+    #adds list of pokemon into individual key value pairs ie p1pokemon list:[pikachu, charizard] -> p1Poke0: pikachu, p1poke1, charizard
+    #this is for easier access to the names in methods that uses the dictionary
     for x in range (2):
         for y in range (len(teamKeys)):
             currentPlayerPokeList = gameLogDictionary["p"+str(x+1)+"PokemonList"]
@@ -189,6 +215,7 @@ def gameLogTodictionary(fileName, accountList):
                 gameLogDictionary["p"+str(x+1)+str(teamKeys[y])] = "N/A"
             else:
                 gameLogDictionary["p"+str(x+1)+str(teamKeys[y])] = currentPlayerPokeList[y]
+
 
     return(gameLogDictionary)
 
